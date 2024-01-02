@@ -1,0 +1,123 @@
+name: Continuous-Deployment-Dev
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+      version_major:
+        required: true
+        type: string
+      version_minor:
+        required: true
+        type: string
+      version_patch:
+        required: true
+        type: string
+      version_full:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  checks: write
+  contents: write
+  deployments: write
+  id-token: none
+  issues: read
+  discussions: none
+  packages: read
+  pages: none
+  pull-requests: read
+  repository-projects: write
+  security-events: read
+  statuses: read
+
+jobs:
+  publish-helm:
+    name: Publish helm to the deployment repository from dev
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Print passed variables
+      run: |
+        echo "sha: ${{ inputs.sha }}"
+        echo "version_major: ${{ inputs.version_major }}"
+        echo "version_minor: ${{ inputs.version_minor }}"
+        echo "version_patch: ${{ inputs.version_patch }}"
+        echo "version_full: ${{ inputs.version_full }}"
+        echo "branch_name: ${{ inputs.branch_name }}"
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.BCZUDEK_ARGO_PAT }}
+      
+    - name: Verify HEAD
+      run: |
+        if [ `git rev-parse HEAD` != ${{ inputs.sha }} ]; then echo "There was commit in the meantime. EXITING NOW!" && exit 2; fi
+
+    - name: Upgrade chart version
+      uses: microsoft/variable-substitution@v1
+      with:
+        files: 'ci-cd/helm-template/Chart.yaml'
+      env:
+        appVersion: ${{ inputs.version_full }}
+    
+    - name: Upgrade image version on awsdev
+      uses: microsoft/variable-substitution@v1
+      with:
+        files: 'ci-cd/helm-template/environments/values-awsdev.yaml'
+      env:
+        image.version_major: ${{ inputs.version_major }}
+        image.version_minor: ${{ inputs.version_minor }}
+        image.version_patch: ${{ inputs.version_patch }}
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: "v3.9.0"
+    - name: Create Helm Template
+      run: |
+        helm template -f ci-cd/helm-template/environments/values-awsdev.yaml ci-cd/helm-template/ > template-awsdev.yaml  
+    
+    - name: Publish deployment to local repository
+      run: |
+        git config --global user.email "githubactions@github.com"
+        git config --global user.name "GitHub Actions"
+        git config pull.rebase false
+        git checkout -B ${{ inputs.branch_name }}
+        git pull origin ${{ inputs.branch_name }} || echo "Nothing to pull"
+
+        mkdir -p ci-cd/helm
+        rm -rf ci-cd/helm/*
+        cp -r ci-cd/helm-template/* ci-cd/helm
+
+        git add -f ci-cd/helm
+        git commit -m "Helm for application version: ${{ inputs.version_full }}"
+        git push -u origin ${{ inputs.branch_name }}
+    
+    - name: Publish deployment to deployment repository
+      run: |
+        mkdir -p ../../deployment
+        cd ../../deployment
+        git clone https://${{ secrets.BCZUDEK_ARGO_PAT }}@github.com/bczudek/argo-r3-deployment.git
+        cd argo-r3-deployment
+        git config --global user.email "githubactions@github.com"
+        git config --global user.name "GitHub Actions"
+        git config pull.rebase false
+        git checkout -B ${{ inputs.branch_name }}
+        git pull origin ${{ inputs.branch_name }} || echo "Nothing to pull"
+
+        mkdir -p argo-r2-nginx
+        rm -rf argo-r2-nginx/*
+        cp -r $GITHUB_WORKSPACE/ci-cd/helm-template/* argo-r2-nginx
+
+        git add .
+        git commit -m "Version: argo-r2-nginx:${{ inputs.version_full }}"
+        git tag -a "argo-r2-nginx-${{ inputs.version_full }}" -m "Latest tag on dev for argo-r2-nginx"
+        git push -u origin ${{ inputs.branch_name }} --tags
