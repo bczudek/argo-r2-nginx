@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "r1-nginx.fullname" . }}
+  name: {{ include "r2-nginx.fullname" . }}
   labels:
-    {{- include "r1-nginx.labels" . | nindent 4 }}
+    {{- include "r2-nginx.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   selector:
     matchLabels:
-      {{- include "r1-nginx.selectorLabels" . | nindent 6 }}
+      {{- include "r2-nginx.selectorLabels" . | nindent 6 }}
   strategy:
     type: {{ .Values.strategy.type }}
     rollingUpdate:
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "r1-nginx.labels" . | nindent 8 }}
+        {{- include "r2-nginx.labels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       containers:

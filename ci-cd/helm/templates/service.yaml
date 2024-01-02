@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: {{ include "k8s-service-name" . }}
   labels:
-    {{- include "r1-nginx.labels" . | nindent 4 }}
+    {{- include "r2-nginx.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
@@ -18,4 +18,4 @@ spec:
       protocol: TCP
       name: jmx
   selector:
-    {{- include "r1-nginx.selectorLabels" . | nindent 4 }}
+    {{- include "r2-nginx.selectorLabels" . | nindent 4 }}

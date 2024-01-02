@@ -8,11 +8,11 @@ image:
   image_repository: r2.nginx
   environment: dev-
   version_major: '1'
-  version_minor: '12'
-  version_patch: 9e4a749
+  version_minor: '1'
+  version_patch: 0cc3580
   pullPolicy: Always
 serviceAccount:
-  name: r1-nginx
+  name: r2-nginx
 labels:
   tier: front
 service:
