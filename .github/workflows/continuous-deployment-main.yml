@@ -1,4 +1,4 @@
-name: Continuous-Deployment-Dev
+name: Continuous-Deployment-Main
 
 on:
   workflow_call:
@@ -68,10 +68,19 @@ jobs:
       env:
         appVersion: ${{ inputs.version_full }}
     
-    - name: Upgrade image version on awsdev
+    - name: Upgrade image version on awspreprod
       uses: microsoft/variable-substitution@v1
       with:
-        files: 'ci-cd/helm-template/environments/values-awsdev.yaml'
+        files: 'ci-cd/helm-template/environments/values-awspreprod.yaml'
+      env:
+        image.version_major: ${{ inputs.version_major }}
+        image.version_minor: ${{ inputs.version_minor }}
+        image.version_patch: ${{ inputs.version_patch }}
+
+    - name: Upgrade image version on awsprod
+      uses: microsoft/variable-substitution@v1
+      with:
+        files: 'ci-cd/helm-template/environments/values-awsprod.yaml'
       env:
         image.version_major: ${{ inputs.version_major }}
         image.version_minor: ${{ inputs.version_minor }}
@@ -83,7 +92,8 @@ jobs:
         version: "v3.9.0"
     - name: Create Helm Template
       run: |
-        helm template -f ci-cd/helm-template/environments/values-awsdev.yaml ci-cd/helm-template/ > template-awsdev.yaml  
+        helm template -f ci-cd/helm-template/environments/values-awspreprod.yaml ci-cd/helm-template/ > template-awspreprod.yaml
+        helm template -f ci-cd/helm-template/environments/values-awsprod.yaml ci-cd/helm-template/ > template-awsprod.yaml
     
     - name: Publish deployment to local repository
       run: |
@@ -119,4 +129,5 @@ jobs:
 
         git add .
         git commit -m "Version: argo-r2-nginx:${{ inputs.version_full }}"
+        git tag -a "argo-r2-nginx-${{ inputs.version_full }}" -m "Latest tag on main for argo-r2-nginx"
         git push -u origin ${{ inputs.branch_name }} --tags

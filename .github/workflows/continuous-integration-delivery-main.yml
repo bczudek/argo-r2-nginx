@@ -1,13 +1,13 @@
-name: Continuous-Integration-Delivery-Dev
+name: Continuous-Integration-Delivery-Main
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "main" ]
     paths-ignore:
       - 'ci-cd/helm/**'
       - index.html
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "main" ]
     paths-ignore:
       - 'ci-cd/helm/**'
       - index.html
@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   build:
-    name: Build, test and deliver image from dev branch
+    name: Build, test and deliver image from main branch
     runs-on: ubuntu-22.04
 
     steps:
@@ -40,19 +40,22 @@ jobs:
         token: ${{ secrets.BCZUDEK_ARGO_PAT }}
 
     - name: Set versions env
-      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'dev' }}
+      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'main' }}
       id: setEnv
       run: |
         VERSION_MAJOR=$(grep 'Major:' index.html | sed 's/[^0-9]*//g')
         VERSION_MINOR=$(grep 'Minor:' index.html | sed 's/[^0-9]*//g')
         VERSION_PATCH=${GITHUB_SHA::7}
 
+        VERSION_MINOR=$((VERSION_MINOR + 1))
+        sed -i "s/\(Minor: \)[0-9]*/\1$VERSION_MINOR/" index.html
         sed -i "s/\(Patch: \).*<\/p>/\1$VERSION_PATCH<\/p>/" index.html
 
         VERSION_FULL=$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH
         BRANCH_NAME=${{github.ref_name}}
 
-        echo "IMAGE_REF_DEV=${{ secrets.ACR_URL }}/r2.nginx:dev-$VERSION_FULL" >> $GITHUB_ENV
+        echo "IMAGE_REF_PREPROD=${{ secrets.ACR_URL }}/r2.nginx:preprod-$VERSION_FULL" >> $GITHUB_ENV
+        echo "IMAGE_REF_PROD=${{ secrets.ACR_URL }}/r2.nginx:prod-$VERSION_FULL" >> $GITHUB_ENV
 
         echo "VERSION_MAJOR=$(grep 'Major:' index.html | sed 's/[^0-9]*//g')" >> $GITHUB_OUTPUT
         echo "VERSION_MINOR=$(grep 'Minor:' index.html | sed 's/[^0-9]*//g')" >> $GITHUB_OUTPUT
@@ -61,14 +64,16 @@ jobs:
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
     
     - name: Build an image from Dockerfile
-      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'dev' }}
+      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'main' }}
       run: |
-        docker build -t $IMAGE_REF_DEV -f ci-cd/docker/Dockerfile .
+        docker build -t $IMAGE_REF_PREPROD -f ci-cd/docker/Dockerfile .
         docker login ${{ secrets.ACR_URL }} --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
-        docker push $IMAGE_REF_DEV
+        docker push $IMAGE_REF_PREPROD
+        docker tag $IMAGE_REF_PREPROD $IMAGE_REF_PROD
+        docker push $IMAGE_REF_PROD
 
     - name: Publish deployment to local repository
-      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'dev' }}
+      if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name == 'main' }}
       run: |
         git config --global user.email "githubactions@github.com"
         git config --global user.name "GitHub Actions"
@@ -87,11 +92,11 @@ jobs:
       version_full: "${{ steps.setEnv.outputs.VERSION_FULL }}"
       branch_name: "${{ steps.setEnv.outputs.BRANCH_NAME }}"
    
-  deploy-to-dev-preprod:
+  deploy-to-prod-preprod:
     needs: build
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/dev' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main' }}
     name: Upload helm to deployment repository
-    uses: ./.github/workflows/continuous-deployment-dev.yml
+    uses: ./.github/workflows/continuous-deployment-main.yml
     with:
       sha: ${{ github.sha }}
       version_major: ${{ needs.build.outputs.version_major }}
