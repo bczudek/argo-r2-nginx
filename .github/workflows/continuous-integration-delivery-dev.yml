@@ -1,16 +1,16 @@
 name: Continuous-Integration-Delivery-Dev
 
 on:
-  # push:
-  #   branches: [ "dev" ]
-  #   paths-ignore:
-  #     - 'ci-cd/helm/**'
-  #     - index.html
-  # pull_request:
-  #   branches: [ "dev" ]
-  #   paths-ignore:
-  #     - 'ci-cd/helm/**'
-  #     - index.html
+  push:
+    branches: [ "dev" ]
+    paths-ignore:
+      - 'ci-cd/helm/**'
+      - index.html
+  pull_request:
+    branches: [ "dev" ]
+    paths-ignore:
+      - 'ci-cd/helm/**'
+      - index.html
   workflow_dispatch:
 
 permissions:
