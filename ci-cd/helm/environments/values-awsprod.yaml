@@ -11,6 +11,7 @@ image:
   version_minor: '3'
   version_patch: 73e21f0
   pullPolicy: Always
+
 serviceAccount:
   name: sa-prod-r2-nginx
 service:
