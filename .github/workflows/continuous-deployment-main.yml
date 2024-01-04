@@ -95,22 +95,6 @@ jobs:
         helm template -f ci-cd/helm-template/environments/values-awspreprod.yaml ci-cd/helm-template/ > template-awspreprod.yaml
         helm template -f ci-cd/helm-template/environments/values-awsprod.yaml ci-cd/helm-template/ > template-awsprod.yaml
     
-    - name: Publish deployment to local repository
-      run: |
-        git config --global user.email "githubactions@github.com"
-        git config --global user.name "GitHub Actions"
-        git config pull.rebase false
-        git checkout -B ${{ inputs.branch_name }}
-        git pull origin ${{ inputs.branch_name }} || echo "Nothing to pull"
-
-        mkdir -p ci-cd/helm
-        rm -rf ci-cd/helm/*
-        cp -r ci-cd/helm-template/* ci-cd/helm
-
-        git add -f ci-cd/helm
-        git commit -m "Helm for application version: ${{ inputs.version_full }}"
-        git push -u origin ${{ inputs.branch_name }}
-    
     - name: Publish deployment to deployment repository
       run: |
         mkdir -p ../../deployment

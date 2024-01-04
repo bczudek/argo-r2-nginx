@@ -52,6 +52,7 @@ jobs:
         VERSION_FULL=$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH
         BRANCH_NAME=${{github.ref_name}}
 
+        echo "VERSION_FULL=$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH" >> $GITHUB_ENV
         echo "IMAGE_REF_DEV=${{ secrets.ACR_URL }}/r2.nginx:dev-$VERSION_FULL" >> $GITHUB_ENV
 
         echo "VERSION_MAJOR=$(grep 'Major:' index.html | sed 's/[^0-9]*//g')" >> $GITHUB_OUTPUT
